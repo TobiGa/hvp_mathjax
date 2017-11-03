@@ -3532,7 +3532,10 @@ class H5PContentValidator {
     }
 
     if (isset($file->copyright)) {
-      $this->validateGroup($file->copyright, $this->getCopyrightSemantics());
+      // +++ MBS-HACK (Andre Scherl)
+      $this->validateGroup($file->copyright, \local_mbslicenseinfo\local\mbshvpcontentvalidator::getCopyrightSemantics($this->h5pF));
+      //$this->validateGroup($file->copyright, $this->getCopyrightSemantics());
+      // --- MBS-HACK
     }
   }
 
