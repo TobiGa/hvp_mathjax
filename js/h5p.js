@@ -359,6 +359,114 @@ H5P.init = function (target) {
     this.contentDocument.write('<!doctype html><html class="h5p-iframe"><script type="text/javascript" async src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/2.7.2/MathJax.js?config=TeX-AMS-MML_HTMLorMML"></script><head>' + H5P.getHeadTags(contentId) + '</head><body><div class="h5p-content" data-content-id="' + contentId + '"/></body></html>');
     this.contentDocument.close();
   });
+
+    /**
+     * MBS-Hack Sebastian Rettig / Tobias Garske
+     * 
+     * H5P observer for triggering mathjax
+     * @module
+     */
+    H5P.MathJax = (function ($) {
+
+      /**
+       * The internal object to return
+       * @class H5P.MathJax
+       * @static
+       */
+      function MathJaxLib() { }
+
+      /**
+       * The number of milliseconds which MathJax requests should be throttled.
+       */
+      var throttleTime = 5;
+
+      /**
+       * The id of the currently running timer used for throtteling MathJax requests.
+       */
+      var runningThrottleTimeoutId = null;
+
+      /* Private functions */
+
+      /**
+       * Configures MathJax  
+       * @param  {Node} container The node to which the rendering should be limited.
+       */
+      var configureMathJax = function (container) {
+        window.MathJax = {
+          showProcessingMessages: false,
+          messageStyle: "none"
+        };
+
+        if (container) {
+          window.MathJax.container = container;
+        }
+      }
+
+      /**
+       * Queues a request at MathJax that the node should be updated.
+       * @param {Node} node The nodes whose descendants should be updated.
+       */
+      var doJax = function (node) {
+        if (MathJax.Hub)
+          MathJax.Hub.Queue(['Typeset', MathJax.Hub, node]);
+      };
+
+      /**
+       * Updates the container's descendants but throttles the updates to reduce CPU load.
+       * @param  {Node} container The node whose descendants should be updated.
+       */
+      var throttledJaxUpdate = function (container) {
+        if (!runningThrottleTimeoutId) {
+          runningThrottleTimeoutId = setTimeout(function () {
+            doJax(container);
+            runningThrottleTimeoutId = null;
+          }, throttleTime);
+        }
+      };
+
+      /**
+       * Sets up an observer that calls MathJax when changes were made to the DOM.
+       * @param  {Node} container The root node to whose descendants changes should be observed.
+       */
+      var setupObserver = function (container) {
+        var MutationObserver = window.MutationObserver || window.WebKitMutationObserver;
+        if (MutationObserver) {
+          var observer = new MutationObserver(function (mutations) {
+            for (var i = 0; i < mutations.length; i++) {
+              if (mutations[i].addedNodes.length) {
+                throttledJaxUpdate(container);
+                return;
+              }
+            }
+          });
+          observer.observe(container, {
+            childList: true,
+            subtree: true
+          });
+        }
+      }
+      
+
+      /* Public static functions */
+
+      /**
+       * Loads the MathJax library
+       * @param  {Node} container The node whose descendants should be parsed with MathJax.
+       */
+      MathJaxLib.load = function (container) {
+        var container = document.getElementsByClassName('h5p-iframe')[0];
+        configureMathJax(container);
+        setupObserver(container);
+      };
+
+      return MathJaxLib;
+    })(H5P.jQuery);    
+    
+    H5P.MathJax.load();    
+    /**
+     * MBS-HACK end
+     */
+
 };
 
 /**
